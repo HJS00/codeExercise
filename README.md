@@ -46,9 +46,18 @@
  * It was determined that Self Dependencies and Circular Dependencies were to result in errors.
  
  *There were discussions regarding adding dependencies that were not on the primary list of jobs to be added to the job list but this was dismissed and it was determined that if this did occur it would also result in an error for the following reasons:
-     -  Adding the dependent job to a list of primary jobs to be executed might cause errors down the line if the dependency is not acutally a valid job - it was better to circumvent this potential problem here;
-     -  Not having the dependency as a primary job we could not be certain if that job itself had any dependencies that would need to be taken into account.
+ * Adding the dependent job to a list of primary jobs to be executed might cause errors down the line if the dependency is not acutally a valid job - it was better to circumvent this potential problem here;
  
- WHAT STRUCTURE WOULD THE CODE TAKE
+ * If we cannot find a Primary Job for a dependency we can not be certain if that job itself had any dependencies that would need to be taken into account - this re-inforces the decision to fail if a dependency is not part of the primary job list.
+ 
+ WHAT STRUCTURE WOULD THE CODE TAKE?
  ----------------------------------
  There was a discussion taken on if a class or a normal function should be used for the processing.  As there would be processing on multiple levels it was decided that a php class was the better option to use.
+ 
+BASIC PROCESSING CONCEPT
+------------------------
+In basic terms it was decided that the process would take the provided string and convert it into two arrays, one with all the Primary Jobs and their dependencies and another that only contains the dependencies.
+
+Using the logic that we only need to order the dependencies and whatever remains thereafter can be added to the end of this ordered list. I worked on getting the right order for the dependencies by going through the dependencies list one by one and checking the dependency against the Primary Job array to see if the dependency itself had a dependency, if it does, I need to check the Primary Job Array again to see if the new dependency has a dependency and so on until I find a Job that has no dependency.  I then save this list in reverse order from the order it was processed in.  This will give me a list that is in the correct order of priority (this job is done effectively by the recursive function) I go through the all the dependencies in this way.  If a dependeny has already been processed I can skip it.
+
+I now have a list that contains all dependencies ordered correctly.  I then ensure no duplicate jobs are included by using array_primary.  This works well as it keeps the first instance and removes any extras - thereby keeping the important order.  Once I have the ordered list of dependencies, I then use  array_keys to get an array containing only the primary jobs as values (the original array has the Primary Job as a key and the dependency - if any - as the corresponding value). I use these primary key values to put through array_diff and compare against the ordered list I have. This will give me an array with all the jobs that are not in my ordered array (ie no other jobs depend on them and they can be placed in any order).  I then use these values in array_merge with my ordered array first and this data inserted behind to create one unique array with all the jobs included; and most importantly in order :)
