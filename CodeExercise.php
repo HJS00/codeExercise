@@ -39,28 +39,31 @@ class jobs {
 
     public function processJobs() 
 	{
-        //If $jobList is not empty process otherwise skip and do no processing, this will result in the return of an empty array.
+        // If $jobList is not empty process otherwise skip and do no processing,
+		// this will result in the return of an empty array.
 		if(!empty($this->jobList))
 		{			
-			//split the list by semi colon to get the relevant data
+			// Split the list by semi colon to get the relevant data
 			$splitArray = explode(';',$this->jobList);
 			
-			//we now have an array containing indiviual strings of primaryJob,Dependency.
-			//we need to go through the list to get the Primary Jobs and Dependecies
+			// We now have an array containing indiviual strings of primaryJob,Dependency.
+			// We need to go through the list to get the Primary Jobs and Dependecies
 			foreach($splitArray as $jobArray)
 			{
-				//check if the $jobArray is empty, if so there is a blank primaryJob, as per specifications, provide error message.
+				// Check if the $jobArray is empty, if so there is a blank primaryJob, as per 
+				//specifications, provide error message.
 				if(empty($jobArray))
 					return "Primary Job cannot be empty.";
 								
-				//Split $jobArray to get an array with the Primary Job [0] and any Dependency [1]
+				// Split $jobArray to get an array with the Primary Job [0] and any Dependency [1]
 				$primaryDependency = explode(',',$jobArray);
 				
-				//check we only have letters and numbers otherwise fail
+				// Check we only have letters and numbers otherwise fail
 				if (!ctype_alnum($primaryDependency[0]))
 					return $primaryDependency[0] . " is not a valid string.";
 
-				// Check if we have any duplicate primary jobs which is not allowed.  If so provide error message.
+				// Check if we have any duplicate primary jobs which is not allowed.
+				// If so provide error message.
 				if(isset($this->primary[$primaryDependency[0]]))
 					return "You have a duplicate Primary Job " . $primaryDependency[0] . " , this is not allowed.";
 				
@@ -72,57 +75,69 @@ class jobs {
 						$this->primary[$primaryDependency[0]] = '';
 						break;
 					case 2:						
-						// There is only one dependency, we can add the dependency to the list knowing that there is definately a second index in the array;
+						// There is only one dependency, we can add the dependency to the list knowing
+						// that there is definately a second index in the array.
 						$theDep = $primaryDependency[1];
 
-						//check if primary and dependency are the same, this is not allowed. If so provide error message
+						// Check if primary and dependency are the same, this is not allowed.
+						// If so provide error message.
 						if($primaryDependency[0] == $theDep)
 							return "Jobs cannot depend on themselves for job " . $primaryDependency[0] . ".";
-			
+						
+						// Add the details to the primary array.
 						$this->primary[$primaryDependency[0]] = $theDep;
+						
+						// If the dependency is not blank, add it to the Dependencies Array.
 						if(!empty($theDep))
 							$this->dependency[] = $theDep;
 						break;
 					default:
-						// If we get here, there was more than 1 dependency which is not valid as per specifications.  Provide error message.
+						// If we get here, there was more than 1 dependency which is not valid as per specifications.
+						// Provide error message.
 						return "Too many dependencies listed for job " . $primaryDependency[0] . ".";
 				}
 			}
 
-			//Now we have two arrays one containing the list of primary jobs and one with only the dependencies.
+			// Now we have two arrays one containing the list of primary jobs and one with only the dependencies.
 
-			//The Dependencies now need to be processed to find in which order we need to provide the output.
+			// The Dependencies now need to be processed to find in which order we need to provide the output.
 			$combinedArray = array();
 			foreach($this->dependency as $sDependency)
 			{
-				//check if we have already processed this if it does have a dependency, if so we don't need to do it again.
+				// Check if we have already processed this, if so we don't need to do it again.
 				if(!isset($this->processed[$sDependency]))
 				{
-					//If we get an error from the getDependencies function one of the dependencies was not a valid Primary Job.  If this is the case provide an error message.
-					if(!is_array($this->getDependencies($sDependency)))
-						return $this->getDependencies($sDependency);
-						
-					//As we have processed this dependency we can get the details from the $processed array.
-					$workingArray = $this->processed[$sDependency];
-						
+					// Process the dependencies
+					$processedDependencies = $this->getDependencies($sDependency);
+					
+					// If we do not get an array from the getDependencies function there was an error.
+					// If this is the case provide the error message.
+					if(!is_array($processedDependencies))
+						return $processedDependencies;
+					
 					//Add the processed data to the combined array for future processing.
-					$combinedArray = array_merge($workingArray,$combinedArray);	
+					$combinedArray = array_merge($processedDependencies,$combinedArray);	
 				}
 			}
-			//We only want the unique values for the combinedArray (we do not want duplicates which could have been created by processing)
+			// We only want the unique values for the combinedArray (we do not want duplicates which
+			// could have been created by processing)
 			$combinedArray = array_unique($combinedArray);
 			
-			//we need to extract all the primary jobs from the Primary array that are not in the $combinedArray and merge them into the ordered array.
+			// We need to extract all the primary jobs from the Primary array that are not in the $combinedArray
+			// and merge these results with the $combinedArray into the final ordered array.
 			$this->ordered = array_merge($combinedArray,array_diff(array_keys($this->primary),$combinedArray));			 
 		}
-		// We now have a blank array or an Array that has the relevant dependencies first
+		// We now have a blank array or an Array that has been ordered and has the relevant dependencies first
 		return $this->ordered;
     }
 	
-	//This is a recursive function that ultimately provides a comma serperated list of all nested dependencies for a specific Primary Job, to save processing it checks if the Dependency has already been processed and if so provides the details already calculated.  It also checks to ensure that all dependencies are actually valid Primary Jobs and that no circular references are given.
+	// This is a recursive function that ultimately provides an array of all nested dependencies for a specific
+	// Primary Job, to save processing it checks if the Dependency has already been processed and if so provides
+	// the details already calculated.  It also checks to ensure that all dependencies are actually valid Primary
+	// Jobs and that no circular references are given.
 	private function getDependencies($sDependency, $processing = array())
 	{
-		//Check if this dependency is a valid Primary Job, if not provide error message.
+		//Check if this dependency is a valid Primary Job, if not return the error.
 		if(!isset($this->primary[$sDependency]))
 			return $sDependency . " is not a valid Job";
 		
@@ -137,13 +152,13 @@ class jobs {
 		$dependencies[] = $sDependency;
 		if(!empty($this->primary[$sDependency]))
 		{
-			//Check for a circular reference and if so, stop processing and report the error.
+			//Check for a circular reference, if so stop processing and return the error.
 			if(in_array($this->primary[$sDependency], $processing))
 				return "Jobs can't have circular references.  A circular Reference was found for " . $this->primary[$sDependency];
 			
 			$thedependencies = $this->getDependencies($this->primary[$sDependency],$processing);
 			
-			//check if the process found any errors, if so report stop processing and return the error.
+			//check if the process found any errors, if so stop processing and return the error.
 			if(!is_array($thedependencies))
 				return $thedependencies;
 			
@@ -154,5 +169,5 @@ class jobs {
 		$this->processed[$sDependency] = $dependencies;
 		return $dependencies;
 	}
-}  
+}
  ?>
